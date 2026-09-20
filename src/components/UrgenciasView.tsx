@@ -26,19 +26,24 @@ import * as XLSX from 'xlsx';
 import { parseUrgenciasRawData, exportUrgenciasToExcel } from '../utils/urgenciasParser';
 import { SAMPLE_URGENCIAS_203 } from '../data/urgenciasSampleData';
 import { summarizeUrgenciasRecords } from '../utils/urgenciasParser';
+import { SecurityCodeModal } from './SecurityCodeModal';
 
 interface UrgenciasViewProps {
   summary: Urgencias203Summary;
   onUpdateSummary: (newSummary: Urgencias203Summary, fileName?: string) => void;
   onOpenReportModal: () => void;
   fileName?: string | null;
+  onRequestUpload?: () => void;
+  isStoredLocally?: boolean;
 }
 
 export const UrgenciasView: React.FC<UrgenciasViewProps> = ({
   summary,
   onUpdateSummary,
   onOpenReportModal,
-  fileName
+  fileName,
+  onRequestUpload,
+  isStoredLocally = false
 }) => {
   const [copiedSedeText, setCopiedSedeText] = useState(false);
   const [copiedPreEgresoText, setCopiedPreEgresoText] = useState(false);
@@ -48,6 +53,7 @@ export const UrgenciasView: React.FC<UrgenciasViewProps> = ({
   const [searchValoracion, setSearchValoracion] = useState<string>('');
   const [expandedDoctor, setExpandedDoctor] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,10 +186,16 @@ export const UrgenciasView: React.FC<UrgenciasViewProps> = ({
 
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              if (onRequestUpload) {
+                onRequestUpload();
+              } else {
+                setIsSecurityModalOpen(true);
+              }
+            }}
             disabled={isProcessing}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors cursor-pointer"
-            title="Cargar archivo Excel o CSV del Reporte 203"
+            title="Cargar archivo Excel o CSV del Reporte 203 (Requiere código 8492)"
           >
             <UploadCloud className="w-4 h-4" />
             <span>{isProcessing ? 'Procesando...' : 'Subir Reporte 203'}</span>
@@ -236,6 +248,12 @@ export const UrgenciasView: React.FC<UrgenciasViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {isStoredLocally && (
+            <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-md font-bold text-xs flex items-center gap-1 shadow-2xs">
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+              Guardado localmente (se reemplaza al subir otro)
+            </span>
+          )}
           <span className="bg-orange-100 text-orange-950 px-2.5 py-1 rounded-md font-bold">
             Auditoría Pre Egreso: {summary.totalPreEgreso} casos activos
           </span>
@@ -733,6 +751,14 @@ export const UrgenciasView: React.FC<UrgenciasViewProps> = ({
         </div>
       </div>
 
+      {/* Modal de Autorización de Seguridad (Código 8492) */}
+      <SecurityCodeModal
+        isOpen={isSecurityModalOpen}
+        onClose={() => setIsSecurityModalOpen(false)}
+        onSuccess={() => fileInputRef.current?.click()}
+        targetTitle="Subir Reporte 203 de Urgencias"
+        actionType="urgencias"
+      />
     </div>
   );
 };

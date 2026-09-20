@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Activity,
   Layers,
@@ -14,7 +14,8 @@ import {
   Info,
   ChevronRight,
   Building2,
-  ShieldAlert
+  ShieldAlert,
+  Database
 } from 'lucide-react';
 import { NormalizedConsultation, DashboardSummary, Urgencias203Summary } from './types';
 import { INITIAL_SAMPLE_DATA } from './data/sampleData';
@@ -29,6 +30,14 @@ import {
   parseUrgenciasRawData,
   exportUrgenciasToExcel
 } from './utils/urgenciasParser';
+import {
+  saveLocalUrgencias,
+  loadLocalUrgencias,
+  clearLocalUrgencias,
+  saveLocalConsultas,
+  loadLocalConsultas,
+  clearLocalConsultas
+} from './utils/localStorageManager';
 import { Header } from './components/Header';
 import { KpiCards } from './components/KpiCards';
 import { PymDashboard } from './components/PymDashboard';
@@ -40,6 +49,7 @@ import { ReportModal } from './components/ReportModal';
 import { FileUploaderModal } from './components/FileUploaderModal';
 import { UrgenciasView } from './components/UrgenciasView';
 import { UrgenciasReportModal } from './components/UrgenciasReportModal';
+import { SecurityCodeModal } from './components/SecurityCodeModal';
 import * as XLSX from 'xlsx';
 
 export default function App() {
@@ -53,15 +63,59 @@ export default function App() {
     summarizeUrgenciasRecords(SAMPLE_URGENCIAS_203)
   );
   const [urgenciasFileName, setUrgenciasFileName] = useState<string | null>(null);
+  const [isStoredUrgencias, setIsStoredUrgencias] = useState(false);
   const [isUrgenciasReportOpen, setIsUrgenciasReportOpen] = useState(false);
   const urgenciasFileInputRef = useRef<HTMLInputElement>(null);
+
+  // ==========================================
+  // ESTADO DE CONSULTAS Y PYM
+  // ==========================================
+  const [consultations, setConsultations] = useState<NormalizedConsultation[]>(INITIAL_SAMPLE_DATA);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [isStoredConsultas, setIsStoredConsultas] = useState(false);
+
+  // Security Code (8492) State
+  const [securityModalState, setSecurityModalState] = useState<{
+    isOpen: boolean;
+    actionType: 'urgencias' | 'consultas';
+    targetTitle: string;
+  } | null>(null);
+
+  // Recuperar datos guardados localmente al iniciar la aplicación
+  useEffect(() => {
+    async function loadSavedData() {
+      try {
+        const storedUrg = await loadLocalUrgencias();
+        if (storedUrg && storedUrg.summary) {
+          setUrgenciasSummary(storedUrg.summary);
+          setUrgenciasFileName(storedUrg.fileName);
+          setIsStoredUrgencias(true);
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar el archivo guardado de urgencias:', err);
+      }
+
+      try {
+        const storedCons = await loadLocalConsultas();
+        if (storedCons && storedCons.consultations && storedCons.consultations.length > 0) {
+          setConsultations(storedCons.consultations);
+          setFileName(storedCons.fileName);
+          setIsStoredConsultas(true);
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar el archivo guardado de consultas:', err);
+      }
+    }
+
+    loadSavedData();
+  }, []);
 
   const handleUrgenciasFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
         const data = evt.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
@@ -77,6 +131,10 @@ export default function App() {
         const newSummary = parseUrgenciasRawData(rawJson);
         setUrgenciasSummary(newSummary);
         setUrgenciasFileName(file.name);
+        setIsStoredUrgencias(true);
+
+        // Guardar y reemplazar automáticamente en almacenamiento local
+        await saveLocalUrgencias(newSummary, file.name);
       } catch (err) {
         console.error('Error al procesar archivo de urgencias', err);
         alert('Error al leer el archivo. Verifique el formato Excel o CSV.');
@@ -87,16 +145,12 @@ export default function App() {
     reader.readAsBinaryString(file);
   };
 
-  const handleResetUrgencias = () => {
+  const handleResetUrgencias = async () => {
     setUrgenciasSummary(summarizeUrgenciasRecords(SAMPLE_URGENCIAS_203));
     setUrgenciasFileName(null);
+    setIsStoredUrgencias(false);
+    await clearLocalUrgencias();
   };
-
-  // ==========================================
-  // ESTADO DE CONSULTAS Y PYM
-  // ==========================================
-  const [consultations, setConsultations] = useState<NormalizedConsultation[]>(INITIAL_SAMPLE_DATA);
-  const [fileName, setFileName] = useState<string | null>(null);
 
   // Cross-filtering states
   const [selectedPym, setSelectedPym] = useState<string>('');
@@ -114,24 +168,47 @@ export default function App() {
     return computeDashboardSummary(consultations, userSelectedConvenios || undefined);
   }, [consultations, userSelectedConvenios]);
 
-  // Handler for uploading new report
-  const handleDataLoaded = (newConsultations: NormalizedConsultation[], uploadedName: string) => {
+  // Handler for uploading new report (reemplaza archivo previo y persiste localmente)
+  const handleDataLoaded = async (newConsultations: NormalizedConsultation[], uploadedName: string) => {
     setConsultations(newConsultations);
     setFileName(uploadedName);
+    setIsStoredConsultas(true);
     setSelectedPym('');
     setSelectedMedico('');
     setSelectedConvenio('');
     setUserSelectedConvenios(null);
+
+    // Guardar y reemplazar en almacenamiento local
+    await saveLocalConsultas(newConsultations, uploadedName);
   };
 
   // Handler to reset sample data
-  const handleResetSampleData = () => {
+  const handleResetSampleData = async () => {
     setConsultations(INITIAL_SAMPLE_DATA);
     setFileName(null);
+    setIsStoredConsultas(false);
     setSelectedPym('');
     setSelectedMedico('');
     setSelectedConvenio('');
     setUserSelectedConvenios(null);
+    await clearLocalConsultas();
+  };
+
+  // Manejador del código de seguridad (8492) para los botones de subir reporte y subir consulta
+  const handleOpenSecurityFor = (type: 'urgencias' | 'consultas') => {
+    setSecurityModalState({
+      isOpen: true,
+      actionType: type,
+      targetTitle: type === 'urgencias' ? 'Subir Reporte 203 de Urgencias' : 'Subir Consulta Externa & PyM'
+    });
+  };
+
+  const handleSecuritySuccess = () => {
+    if (securityModalState?.actionType === 'urgencias') {
+      urgenciasFileInputRef.current?.click();
+    } else if (securityModalState?.actionType === 'consultas') {
+      setIsUploadOpen(true);
+    }
   };
 
   // Handler para alternar convenios seleccionados (soporta 10 o más)
@@ -183,13 +260,7 @@ export default function App() {
         totalUrgencias={urgenciasSummary.totalRegistros}
         totalPreEgreso={urgenciasSummary.totalPreEgreso}
         totalAprobadoEgreso={urgenciasSummary.totalAprobadoEgreso}
-        onOpenUpload={() => {
-          if (activeModule === 'urgencias') {
-            urgenciasFileInputRef.current?.click();
-          } else {
-            setIsUploadOpen(true);
-          }
-        }}
+        onOpenUpload={() => handleOpenSecurityFor(activeModule)}
         onOpenReport={() => {
           if (activeModule === 'urgencias') {
             setIsUrgenciasReportOpen(true);
@@ -223,9 +294,15 @@ export default function App() {
           <UrgenciasView
             summary={urgenciasSummary}
             fileName={urgenciasFileName}
-            onUpdateSummary={(newSummary, newFileName) => {
+            isStoredLocally={isStoredUrgencias}
+            onRequestUpload={() => handleOpenSecurityFor('urgencias')}
+            onUpdateSummary={async (newSummary, newFileName) => {
               setUrgenciasSummary(newSummary);
-              if (newFileName !== undefined) setUrgenciasFileName(newFileName);
+              if (newFileName !== undefined) {
+                setUrgenciasFileName(newFileName);
+                setIsStoredUrgencias(true);
+                await saveLocalUrgencias(newSummary, newFileName);
+              }
             }}
             onOpenReportModal={() => setIsUrgenciasReportOpen(true)}
           />
@@ -238,7 +315,7 @@ export default function App() {
           <>
             {/* Source File & Mode Banner */}
             <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 mb-6 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 text-xs text-slate-600">
+              <div className="flex items-center gap-2.5 text-xs text-slate-600 flex-wrap">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100" />
                 <span>
                   Origen de datos:{' '}
@@ -246,6 +323,12 @@ export default function App() {
                     {fileName ? fileName : 'Muestra oficial de prueba (36 consultas precargadas)'}
                   </strong>
                 </span>
+                {isStoredConsultas && (
+                  <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Guardado localmente (se reemplaza al subir otro)
+                  </span>
+                )}
                 <span className="text-slate-300">|</span>
                 <span className="text-slate-500">
                   Total filas analizadas: <strong className="text-slate-800">{summary.totalRegistros}</strong>
@@ -441,6 +524,17 @@ export default function App() {
         onClose={() => setIsUrgenciasReportOpen(false)}
         summary={urgenciasSummary}
       />
+
+      {/* Modal de Control de Seguridad (Código 8492) */}
+      {securityModalState && (
+        <SecurityCodeModal
+          isOpen={securityModalState.isOpen}
+          onClose={() => setSecurityModalState(null)}
+          onSuccess={handleSecuritySuccess}
+          targetTitle={securityModalState.targetTitle}
+          actionType={securityModalState.actionType}
+        />
+      )}
     </div>
   );
 }

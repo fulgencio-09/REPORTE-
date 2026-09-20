@@ -126,10 +126,10 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={onOpenUpload}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold shadow-2xs transition-colors cursor-pointer"
-              title={currentModule === 'urgencias' ? 'Subir archivo del Reporte 203' : 'Subir reporte de consultas'}
+              title={currentModule === 'urgencias' ? 'Subir reporte de urgencias (requiere código 8492)' : 'Subir consulta externa (requiere código 8492)'}
             >
               <UploadCloud className={`w-4 h-4 ${currentModule === 'urgencias' ? 'text-orange-600' : 'text-blue-600'}`} />
-              <span>{currentModule === 'urgencias' ? 'Subir 203' : 'Subir Consultas'}</span>
+              <span>{currentModule === 'urgencias' ? 'Subir Reporte (203)' : 'Subir Consulta'}</span>
             </button>
 
             <button
