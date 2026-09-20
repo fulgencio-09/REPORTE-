@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 10mm;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  header, footer, nav, #btn-subir-reporte, #btn-generar-informe, #btn-exportar-excel, #btn-descargar-plantilla, #btn-cargar-muestra {
+    display: none !important;
+  }
+
+  .fixed {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .shadow-2xl, .shadow-xs, .shadow-2xs, .shadow-md, .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}

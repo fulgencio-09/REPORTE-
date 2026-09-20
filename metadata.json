@@ -1,0 +1,6 @@
+{
+  "name": "Tablero de Consultas Médicas",
+  "description": "Tablero visual y generador de informes de consultas médicas: conteo por PyM, profesional y consultas en sala con soporte para subir reportes Excel y CSV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
