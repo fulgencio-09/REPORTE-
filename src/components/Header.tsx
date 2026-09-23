@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Ing. Fulgencio Quintero Brito (Cel: 3006774200) · Coord. Marcellis Oñate
+                Ing. Fulgencio Quintero Brito (Cel: ) · Coord. Marcellis Oñate
               </p>
             </div>
           </div>

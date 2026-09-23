@@ -166,7 +166,7 @@ export const UrgenciasReportModal: React.FC<UrgenciasReportModalProps> = ({
                     <span className="font-semibold text-slate-800">Responsable de Sistemas:</span>
                     <span>Ing. Fulgencio Quintero Brito</span>
                     <span className="text-slate-300">|</span>
-                    <span className="font-mono text-slate-700 font-bold">Cel: 3006774200</span>
+                    <span className="font-mono text-slate-700 font-bold">Cel: </span>
                   </div>
                 </div>
               </div>
@@ -516,7 +516,7 @@ export const UrgenciasReportModal: React.FC<UrgenciasReportModalProps> = ({
                   </div>
                   <div className="text-xs font-mono font-semibold text-slate-700 flex items-center justify-center gap-1.5 mt-0.5">
                     <Phone className="w-3 h-3 text-slate-400" />
-                    <span>Cel: 3006774200</span>
+                    <span>Cel: </span>
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium mt-1">
                     Hospital Santa Teresa de Jesús de Ávila

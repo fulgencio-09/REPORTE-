@@ -12,6 +12,7 @@ import {
   ConvenioCuadroStat,
   ConvenioCuadroItem
 } from '../types';
+import { DEFAULT_PREDETERMINADOS_CONVENIOS } from '../data/sampleData';
 
 export const normalizeString = (str: any): string => {
   if (str === null || str === undefined) return '';
@@ -326,13 +327,30 @@ export const computeDashboardSummary = (
 
   const todosConvenios = convenioStats.map((c) => c.convenionombre);
 
-  // Selección de convenios flexibles (Requerimiento: "permiteme tomar mas convenio y por lo menos 10")
+  // Selección de convenios flexibles con convenios predeterminados oficiales:
+  // 1. PROTEGER EPS SUBSIDIADO ASISTENCIAL MORBILIDAD Y PYM
+  // 2. DUSAKAWI SUBSIDIADO PMS-44090-2026-12 PMT PYM
+  // 3. DUSAKAWI SUBSIDIADO ASISTENCIAL ASB-44090-2026-20 CONSULTA MORBILIDAD
+  // 4. NUEVA EPS SUBSIDIADO ASISTENCIAL MORBILIDAD
+  // 5. NUEVA EPS SUBSIDIADO PYM
   let selectedConvenios: string[] = [];
   if (preferredConvenios && preferredConvenios.length > 0) {
     selectedConvenios = preferredConvenios;
   } else {
-    // Por defecto seleccionar hasta los primeros 10 convenios con mayor volumen
-    selectedConvenios = todosConvenios.slice(0, 10);
+    // Buscar los convenios predeterminados oficiales en el dataset cargado (coincidencia con espacios normalizados)
+    const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toUpperCase();
+    const defaultsNormalized = DEFAULT_PREDETERMINADOS_CONVENIOS.map(norm);
+
+    const matchingDefaults = todosConvenios.filter((conv) =>
+      defaultsNormalized.includes(norm(conv))
+    );
+
+    if (matchingDefaults.length > 0) {
+      selectedConvenios = matchingDefaults;
+    } else {
+      // Si el archivo no contiene los convenios predeterminados, tomar los primeros 10 principales
+      selectedConvenios = todosConvenios.slice(0, 10);
+    }
   }
 
   // Si no hay convenios en dataset

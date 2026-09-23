@@ -388,7 +388,7 @@ export const downloadHtmlReport = (summary: DashboardSummary, customSignatureImg
         <div style="border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 6px;">
           <div style="font-weight: 900; font-size: 13px; color: #0f172a;">ING. FULGENCIO QUINTERO BRITO</div>
           <div style="font-size: 11px; font-weight: 700; color: #2563eb;">Ingeniero de Sistemas</div>
-          <div style="font-size: 11px; font-weight: 600; color: #334155;">Cel: 3006774200</div>
+          <div style="font-size: 11px; font-weight: 600; color: #334155;">Cel: </div>
           <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Hospital Santa Teresa de Jesús de Ávila</div>
           <div style="margin-top: 4px; display: inline-block; font-size: 9px; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: bold;">
             Firma Digital Certificada

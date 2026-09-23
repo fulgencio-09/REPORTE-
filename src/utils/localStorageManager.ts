@@ -141,14 +141,54 @@ export async function saveLocalUrgencias(
     fileName,
     savedAt: new Date().toISOString()
   };
+
+  // 1. Guardar primero en el servidor web para que esté disponible en todos los dispositivos
+  try {
+    const res = await fetch('/api/reports/urgencias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ summary, fileName })
+    });
+    if (!res.ok) {
+      console.warn('[Storage] Servidor respondió con código no exitoso al guardar urgencias:', res.status);
+    }
+  } catch (netErr) {
+    console.warn('[Storage] No se pudo sincronizar urgencias con el servidor web (modo sin conexión):', netErr);
+  }
+
+  // 2. Guardar en almacenamiento local (IndexedDB) para acceso rápido y sin conexión
   await idbSet(KEY_URGENCIAS, data);
 }
 
 export async function loadLocalUrgencias(): Promise<StoredUrgencias | null> {
+  // 1. Intentar cargar desde el servidor web (prioridad: datos compartidos entre dispositivos)
+  try {
+    const res = await fetch('/api/reports/urgencias');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.data && json.data.summary) {
+        // Actualizar caché local
+        await idbSet(KEY_URGENCIAS, json.data);
+        return json.data as StoredUrgencias;
+      }
+    }
+  } catch (netErr) {
+    console.warn('[Storage] Servidor no disponible, cargando urgencias desde almacenamiento local:', netErr);
+  }
+
+  // 2. Si el servidor no tiene datos o está inaccesible, leer de IndexedDB local
   return await idbGet<StoredUrgencias>(KEY_URGENCIAS);
 }
 
 export async function clearLocalUrgencias(): Promise<void> {
+  // Eliminar en servidor
+  try {
+    await fetch('/api/reports/urgencias', { method: 'DELETE' });
+  } catch (err) {
+    console.warn('[Storage] Error al eliminar urgencias en servidor:', err);
+  }
+
+  // Eliminar en almacenamiento local
   await idbDelete(KEY_URGENCIAS);
 }
 
@@ -165,13 +205,71 @@ export async function saveLocalConsultas(
     fileName,
     savedAt: new Date().toISOString()
   };
+
+  // 1. Guardar en el servidor web centralizado para acceso multi-dispositivo
+  try {
+    const res = await fetch('/api/reports/consultas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consultations, fileName })
+    });
+    if (!res.ok) {
+      console.warn('[Storage] Servidor respondió con error al guardar consultas:', res.status);
+    }
+  } catch (netErr) {
+    console.warn('[Storage] No se pudo sincronizar consultas con el servidor web:', netErr);
+  }
+
+  // 2. Guardar en almacenamiento local IndexedDB
   await idbSet(KEY_CONSULTAS, data);
 }
 
 export async function loadLocalConsultas(): Promise<StoredConsultas | null> {
+  // 1. Intentar cargar del servidor web primero
+  try {
+    const res = await fetch('/api/reports/consultas');
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.data && json.data.consultations && json.data.consultations.length > 0) {
+        // Actualizar caché local
+        await idbSet(KEY_CONSULTAS, json.data);
+        return json.data as StoredConsultas;
+      }
+    }
+  } catch (netErr) {
+    console.warn('[Storage] Servidor no disponible, cargando consultas de almacenamiento local:', netErr);
+  }
+
+  // 2. Fallback a IndexedDB local
   return await idbGet<StoredConsultas>(KEY_CONSULTAS);
 }
 
 export async function clearLocalConsultas(): Promise<void> {
+  // Eliminar en servidor
+  try {
+    await fetch('/api/reports/consultas', { method: 'DELETE' });
+  } catch (err) {
+    console.warn('[Storage] Error al eliminar consultas en servidor:', err);
+  }
+
+  // Eliminar en almacenamiento local
   await idbDelete(KEY_CONSULTAS);
+}
+
+// Verificar cambios en el servidor para sincronizar otros dispositivos
+export async function getServerSyncStatus(): Promise<{
+  hasUrgencias: boolean;
+  urgenciasMeta: { updatedAt: string } | null;
+  hasConsultas: boolean;
+  consultasMeta: { updatedAt: string } | null;
+} | null> {
+  try {
+    const res = await fetch('/api/reports/status');
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch {
+    // Modo offline silencioso
+  }
+  return null;
 }

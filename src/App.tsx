@@ -36,7 +36,8 @@ import {
   clearLocalUrgencias,
   saveLocalConsultas,
   loadLocalConsultas,
-  clearLocalConsultas
+  clearLocalConsultas,
+  getServerSyncStatus
 } from './utils/localStorageManager';
 import { Header } from './components/Header';
 import { KpiCards } from './components/KpiCards';
@@ -81,8 +82,11 @@ export default function App() {
     targetTitle: string;
   } | null>(null);
 
-  // Recuperar datos guardados localmente al iniciar la aplicación
+  // Recuperar datos sincronizados del servidor web al iniciar la aplicación y verificar periódicamente
   useEffect(() => {
+    let lastUrgTimestamp = '';
+    let lastConsTimestamp = '';
+
     async function loadSavedData() {
       try {
         const storedUrg = await loadLocalUrgencias();
@@ -90,9 +94,10 @@ export default function App() {
           setUrgenciasSummary(storedUrg.summary);
           setUrgenciasFileName(storedUrg.fileName);
           setIsStoredUrgencias(true);
+          lastUrgTimestamp = storedUrg.savedAt || '';
         }
       } catch (err) {
-        console.warn('No se pudo cargar el archivo guardado de urgencias:', err);
+        console.warn('No se pudo cargar el archivo de urgencias:', err);
       }
 
       try {
@@ -101,13 +106,54 @@ export default function App() {
           setConsultations(storedCons.consultations);
           setFileName(storedCons.fileName);
           setIsStoredConsultas(true);
+          lastConsTimestamp = storedCons.savedAt || '';
         }
       } catch (err) {
-        console.warn('No se pudo cargar el archivo guardado de consultas:', err);
+        console.warn('No se pudo cargar el archivo de consultas:', err);
       }
     }
 
+    // Carga inicial
     loadSavedData();
+
+    // Sincronización automática entre dispositivos cada 20 segundos o al regresar a la pestaña
+    const checkSync = async () => {
+      try {
+        const status = await getServerSyncStatus();
+        if (!status) return;
+
+        if (status.hasUrgencias && status.urgenciasMeta?.updatedAt && status.urgenciasMeta.updatedAt !== lastUrgTimestamp) {
+          const freshUrg = await loadLocalUrgencias();
+          if (freshUrg && freshUrg.summary) {
+            setUrgenciasSummary(freshUrg.summary);
+            setUrgenciasFileName(freshUrg.fileName);
+            setIsStoredUrgencias(true);
+            lastUrgTimestamp = freshUrg.savedAt || status.urgenciasMeta.updatedAt;
+          }
+        }
+
+        if (status.hasConsultas && status.consultasMeta?.updatedAt && status.consultasMeta.updatedAt !== lastConsTimestamp) {
+          const freshCons = await loadLocalConsultas();
+          if (freshCons && freshCons.consultations && freshCons.consultations.length > 0) {
+            setConsultations(freshCons.consultations);
+            setFileName(freshCons.fileName);
+            setIsStoredConsultas(true);
+            lastConsTimestamp = freshCons.savedAt || status.consultasMeta.updatedAt;
+          }
+        }
+      } catch {
+        // Silencioso
+      }
+    };
+
+    const interval = setInterval(checkSync, 20000);
+    const onFocus = () => { checkSync(); };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, []);
 
   const handleUrgenciasFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -325,8 +371,8 @@ export default function App() {
                 </span>
                 {isStoredConsultas && (
                   <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md font-bold text-[11px] flex items-center gap-1 shadow-2xs">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    Guardado localmente (se reemplaza al subir otro)
+                    <Database className="w-3.5 h-3.5 text-emerald-600" />
+                    Sincronizado en servidor web (visible en todos los dispositivos)
                   </span>
                 )}
                 <span className="text-slate-300">|</span>
@@ -443,6 +489,7 @@ export default function App() {
                 onToggleConvenio={handleToggleConvenio}
                 onSelectAllConvenios={handleSelectAllConvenios}
                 onSelectTop10Convenios={handleSelectTop10Convenios}
+                onSelectPredeterminados={() => setUserSelectedConvenios(null)}
                 onClearConvenios={handleClearConvenios}
                 onSelectConvenioFilter={(conv) => {
                   setSelectedConvenio(conv);

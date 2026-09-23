@@ -21,6 +21,7 @@ interface ConveniosSectionProps {
   onToggleConvenio: (conv: string) => void;
   onSelectAllConvenios: () => void;
   onSelectTop10Convenios: () => void;
+  onSelectPredeterminados?: () => void;
   onClearConvenios: () => void;
   onSelectConvenioFilter?: (conv: string) => void;
 }
@@ -31,6 +32,7 @@ export const ConveniosSection: React.FC<ConveniosSectionProps> = ({
   onToggleConvenio,
   onSelectAllConvenios,
   onSelectTop10Convenios,
+  onSelectPredeterminados,
   onClearConvenios,
   onSelectConvenioFilter
 }) => {
@@ -114,19 +116,30 @@ export const ConveniosSection: React.FC<ConveniosSectionProps> = ({
           </span>
 
           <div className="flex items-center gap-1.5 flex-wrap">
+            {onSelectPredeterminados && (
+              <button
+                type="button"
+                onClick={onSelectPredeterminados}
+                className="text-xs font-black text-white bg-purple-700 hover:bg-purple-800 px-3 py-1 rounded-lg shadow-2xs border border-purple-800 transition-colors cursor-pointer flex items-center gap-1"
+                title="Seleccionar los 5 convenios predeterminados oficiales"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Predeterminados (5 Oficiales)</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onSelectTop10Convenios}
               className="text-xs font-bold text-purple-900 bg-purple-100 hover:bg-purple-200 px-3 py-1 rounded-lg border border-purple-300 transition-colors cursor-pointer"
             >
-              Tomar 10 Convenios Principales
+              Tomar 10 Principales
             </button>
             <button
               type="button"
               onClick={onSelectAllConvenios}
               className="text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 transition-colors cursor-pointer"
             >
-              Seleccionar Todos ({summary.todosConvenios.length})
+              Todos ({summary.todosConvenios.length})
             </button>
             <button
               type="button"

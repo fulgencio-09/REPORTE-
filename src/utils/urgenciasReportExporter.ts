@@ -275,7 +275,7 @@ export const downloadHtmlUrgenciasReport = (summary: Urgencias203Summary, custom
         <h1 class="hospital-title">HOSPITAL SANTA TERESA DE JESÚS DE ÁVILA</h1>
         <div class="hospital-subtitle">DEPARTAMENTO DE SISTEMAS E INFORMACIÓN ASISTENCIAL</div>
         <div style="font-size: 12px; font-weight: bold; color: #0f172a;">INFORME DE URGENCIAS - REPORTE 203</div>
-        <div style="font-size: 11px; color: #64748b;">Responsable: Ing. Fulgencio Quintero Brito - Cel: 3006774200</div>
+        <div style="font-size: 11px; color: #64748b;">Responsable: Ing. Fulgencio Quintero Brito - Cel: </div>
       </div>
       <div class="meta-box">
         <div><strong>Fecha:</strong> ${currentDate}</div>
@@ -379,7 +379,7 @@ export const downloadHtmlUrgenciasReport = (summary: Urgencias203Summary, custom
         <div style="border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 6px;">
           <div style="font-weight: 900; font-size: 13px; color: #0f172a;">ING. FULGENCIO QUINTERO BRITO</div>
           <div style="font-size: 11px; font-weight: 700; color: #2563eb;">Ingeniero de Sistemas</div>
-          <div style="font-size: 11px; font-weight: 600; color: #334155;">Cel: 3006774200</div>
+          <div style="font-size: 11px; font-weight: 600; color: #334155;">Cel: </div>
           <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Hospital Santa Teresa de Jesús de Ávila</div>
           <div style="margin-top: 4px; display: inline-block; font-size: 9px; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: bold;">
             Firma Digital Certificada
