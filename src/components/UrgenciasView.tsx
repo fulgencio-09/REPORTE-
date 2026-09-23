@@ -251,7 +251,7 @@ export const UrgenciasView: React.FC<UrgenciasViewProps> = ({
           {isStoredLocally && (
             <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded-md font-bold text-xs flex items-center gap-1 shadow-2xs">
               <Check className="w-3.5 h-3.5 text-emerald-600" />
-              Sincronizado en servidor web (visible en todos los dispositivos)
+              Base de Datos Cloud Activa (Sincronizado multi-dispositivo)
             </span>
           )}
           <span className="bg-orange-100 text-orange-950 px-2.5 py-1 rounded-md font-bold">

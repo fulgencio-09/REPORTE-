@@ -39,6 +39,10 @@ import {
   clearLocalConsultas,
   getServerSyncStatus
 } from './utils/localStorageManager';
+import {
+  subscribeToCloudUrgencias,
+  subscribeToCloudConsultasMeta
+} from './firebase';
 import { Header } from './components/Header';
 import { KpiCards } from './components/KpiCards';
 import { PymDashboard } from './components/PymDashboard';
@@ -113,10 +117,46 @@ export default function App() {
       }
     }
 
-    // Carga inicial
+    // Carga inicial (Firestore > Servidor > IndexedDB)
     loadSavedData();
 
-    // Sincronización automática entre dispositivos cada 20 segundos o al regresar a la pestaña
+    // 1. Suscripción en TIEMPO REAL a la Base de Datos Cloud (Firestore)
+    // Permite que cuando se suba un informe desde un teléfono, tablet u otra PC, se actualicen todas las pantallas al instante
+    let unsubUrg: (() => void) | null = null;
+    let unsubConsMeta: (() => void) | null = null;
+
+    try {
+      unsubUrg = subscribeToCloudUrgencias((cloudUrg) => {
+        if (cloudUrg && cloudUrg.summary) {
+          if (cloudUrg.savedAt !== lastUrgTimestamp) {
+            setUrgenciasSummary(cloudUrg.summary);
+            setUrgenciasFileName(cloudUrg.fileName);
+            setIsStoredUrgencias(true);
+            lastUrgTimestamp = cloudUrg.savedAt;
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Suscripción Firestore Urgencias no disponible:', e);
+    }
+
+    try {
+      unsubConsMeta = subscribeToCloudConsultasMeta(async (meta) => {
+        if (meta && meta.updatedAt && meta.updatedAt !== lastConsTimestamp) {
+          const freshCons = await loadLocalConsultas();
+          if (freshCons && freshCons.consultations && freshCons.consultations.length > 0) {
+            setConsultations(freshCons.consultations);
+            setFileName(freshCons.fileName);
+            setIsStoredConsultas(true);
+            lastConsTimestamp = freshCons.savedAt || meta.updatedAt;
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Suscripción Firestore Consultas no disponible:', e);
+    }
+
+    // 2. Sincronización periódica de respaldo con el servidor web (cada 15 segundos o al enfocar)
     const checkSync = async () => {
       try {
         const status = await getServerSyncStatus();
@@ -146,11 +186,13 @@ export default function App() {
       }
     };
 
-    const interval = setInterval(checkSync, 20000);
+    const interval = setInterval(checkSync, 15000);
     const onFocus = () => { checkSync(); };
     window.addEventListener('focus', onFocus);
 
     return () => {
+      if (unsubUrg) unsubUrg();
+      if (unsubConsMeta) unsubConsMeta();
       clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
@@ -372,7 +414,7 @@ export default function App() {
                 {isStoredConsultas && (
                   <span className="bg-emerald-50 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md font-bold text-[11px] flex items-center gap-1 shadow-2xs">
                     <Database className="w-3.5 h-3.5 text-emerald-600" />
-                    Sincronizado en servidor web (visible en todos los dispositivos)
+                    Base de Datos Cloud Activa (Sincronizado multi-dispositivo)
                   </span>
                 )}
                 <span className="text-slate-300">|</span>

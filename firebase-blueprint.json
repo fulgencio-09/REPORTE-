@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "urgenciasReport": {
+      "title": "Urgencias Report 203",
+      "description": "Reporte consolidado de Urgencias 203 del Hospital Santa Teresa de Jesús de Ávila",
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string",
+          "description": "Nombre del archivo de reporte 203 cargado"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Fecha y hora ISO de actualización"
+        },
+        "summaryJson": {
+          "type": "string",
+          "description": "Resumen serializado de urgencias"
+        }
+      },
+      "required": ["fileName", "updatedAt", "summaryJson"]
+    },
+    "consultasMeta": {
+      "title": "Consultas PyM Metadata",
+      "description": "Metadatos del reporte activo de Consultas Externas y PyM",
+      "type": "object",
+      "properties": {
+        "fileName": {
+          "type": "string",
+          "description": "Nombre del archivo de consultas cargado"
+        },
+        "totalRecords": {
+          "type": "number",
+          "description": "Total de registros procesados"
+        },
+        "totalChunks": {
+          "type": "number",
+          "description": "Cantidad de fragmentos almacenados"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Fecha y hora ISO de actualización"
+        }
+      },
+      "required": ["fileName", "totalRecords", "totalChunks", "updatedAt"]
+    },
+    "consultasChunk": {
+      "title": "Consultas PyM Chunk",
+      "description": "Fragmento de registros de consultas para almacenamiento distribuido y seguro",
+      "type": "object",
+      "properties": {
+        "chunkIndex": {
+          "type": "number",
+          "description": "Índice secuencial del fragmento"
+        },
+        "recordsJson": {
+          "type": "string",
+          "description": "Lista de registros serializada en JSON"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Fecha y hora ISO de actualización"
+        }
+      },
+      "required": ["chunkIndex", "recordsJson", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/urgencias_reports/{reportId}": {
+      "schema": "urgenciasReport",
+      "description": "Almacenamiento de reportes de urgencias accesibles institucionalmente"
+    },
+    "/consultas_meta/{metaId}": {
+      "schema": "consultasMeta",
+      "description": "Cabecera y metadatos de sincronización de consultas"
+    },
+    "/consultas_chunks/{chunkId}": {
+      "schema": "consultasChunk",
+      "description": "Registros de consultas segmentados para acceso rápido multi-dispositivo"
+    }
+  }
+}

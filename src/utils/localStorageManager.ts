@@ -128,6 +128,15 @@ async function idbDelete(key: string): Promise<void> {
   }
 }
 
+import {
+  saveCloudUrgencias,
+  loadCloudUrgencias,
+  clearCloudUrgencias,
+  saveCloudConsultas,
+  loadCloudConsultas,
+  clearCloudConsultas
+} from '../firebase';
+
 // ==========================================
 // URGENCIAS REPORTE 203
 // ==========================================
@@ -142,7 +151,14 @@ export async function saveLocalUrgencias(
     savedAt: new Date().toISOString()
   };
 
-  // 1. Guardar primero en el servidor web para que esté disponible en todos los dispositivos
+  // 1. Guardar en Base de Datos Cloud (Firestore) para acceso multi-dispositivo global
+  try {
+    await saveCloudUrgencias(summary, fileName);
+  } catch (cloudErr) {
+    console.warn('[Storage] No se pudo guardar en Firestore (se intentará vía servidor/local):', cloudErr);
+  }
+
+  // 2. Guardar en el servidor web (Express)
   try {
     const res = await fetch('/api/reports/urgencias', {
       method: 'POST',
@@ -150,37 +166,54 @@ export async function saveLocalUrgencias(
       body: JSON.stringify({ summary, fileName })
     });
     if (!res.ok) {
-      console.warn('[Storage] Servidor respondió con código no exitoso al guardar urgencias:', res.status);
+      console.warn('[Storage] Servidor web respondió con código:', res.status);
     }
   } catch (netErr) {
-    console.warn('[Storage] No se pudo sincronizar urgencias con el servidor web (modo sin conexión):', netErr);
+    console.warn('[Storage] No se pudo contactar endpoint de urgencias:', netErr);
   }
 
-  // 2. Guardar en almacenamiento local (IndexedDB) para acceso rápido y sin conexión
+  // 3. Guardar en almacenamiento local (IndexedDB) para acceso rápido offline
   await idbSet(KEY_URGENCIAS, data);
 }
 
 export async function loadLocalUrgencias(): Promise<StoredUrgencias | null> {
-  // 1. Intentar cargar desde el servidor web (prioridad: datos compartidos entre dispositivos)
+  // 1. Intentar cargar desde Base de Datos Cloud (Firestore)
+  try {
+    const cloudData = await loadCloudUrgencias();
+    if (cloudData && cloudData.summary) {
+      await idbSet(KEY_URGENCIAS, cloudData);
+      return cloudData as StoredUrgencias;
+    }
+  } catch (cloudErr) {
+    console.warn('[Storage] Error al leer urgencias de Firestore:', cloudErr);
+  }
+
+  // 2. Intentar cargar desde el servidor web Express
   try {
     const res = await fetch('/api/reports/urgencias');
     if (res.ok) {
       const json = await res.json();
       if (json && json.data && json.data.summary) {
-        // Actualizar caché local
         await idbSet(KEY_URGENCIAS, json.data);
         return json.data as StoredUrgencias;
       }
     }
   } catch (netErr) {
-    console.warn('[Storage] Servidor no disponible, cargando urgencias desde almacenamiento local:', netErr);
+    console.warn('[Storage] Servidor web no disponible, usando almacenamiento local:', netErr);
   }
 
-  // 2. Si el servidor no tiene datos o está inaccesible, leer de IndexedDB local
+  // 3. Fallback a IndexedDB local
   return await idbGet<StoredUrgencias>(KEY_URGENCIAS);
 }
 
 export async function clearLocalUrgencias(): Promise<void> {
+  // Eliminar en Firestore
+  try {
+    await clearCloudUrgencias();
+  } catch (cloudErr) {
+    console.warn('[Storage] Error al limpiar urgencias en Firestore:', cloudErr);
+  }
+
   // Eliminar en servidor
   try {
     await fetch('/api/reports/urgencias', { method: 'DELETE' });
@@ -206,7 +239,14 @@ export async function saveLocalConsultas(
     savedAt: new Date().toISOString()
   };
 
-  // 1. Guardar en el servidor web centralizado para acceso multi-dispositivo
+  // 1. Guardar en Base de Datos Cloud (Firestore) para acceso multi-dispositivo global
+  try {
+    await saveCloudConsultas(consultations, fileName);
+  } catch (cloudErr) {
+    console.warn('[Storage] No se pudo guardar consultas en Firestore:', cloudErr);
+  }
+
+  // 2. Guardar en servidor web Express
   try {
     const res = await fetch('/api/reports/consultas', {
       method: 'POST',
@@ -214,37 +254,54 @@ export async function saveLocalConsultas(
       body: JSON.stringify({ consultations, fileName })
     });
     if (!res.ok) {
-      console.warn('[Storage] Servidor respondió con error al guardar consultas:', res.status);
+      console.warn('[Storage] Servidor web respondió con código al guardar consultas:', res.status);
     }
   } catch (netErr) {
-    console.warn('[Storage] No se pudo sincronizar consultas con el servidor web:', netErr);
+    console.warn('[Storage] No se pudo sincronizar consultas con servidor web:', netErr);
   }
 
-  // 2. Guardar en almacenamiento local IndexedDB
+  // 3. Guardar en almacenamiento local IndexedDB
   await idbSet(KEY_CONSULTAS, data);
 }
 
 export async function loadLocalConsultas(): Promise<StoredConsultas | null> {
-  // 1. Intentar cargar del servidor web primero
+  // 1. Intentar cargar de Firestore Cloud Database primero
+  try {
+    const cloudData = await loadCloudConsultas();
+    if (cloudData && cloudData.consultations && cloudData.consultations.length > 0) {
+      await idbSet(KEY_CONSULTAS, cloudData);
+      return cloudData as StoredConsultas;
+    }
+  } catch (cloudErr) {
+    console.warn('[Storage] Error al cargar consultas de Firestore:', cloudErr);
+  }
+
+  // 2. Intentar cargar del servidor web
   try {
     const res = await fetch('/api/reports/consultas');
     if (res.ok) {
       const json = await res.json();
       if (json && json.data && json.data.consultations && json.data.consultations.length > 0) {
-        // Actualizar caché local
         await idbSet(KEY_CONSULTAS, json.data);
         return json.data as StoredConsultas;
       }
     }
   } catch (netErr) {
-    console.warn('[Storage] Servidor no disponible, cargando consultas de almacenamiento local:', netErr);
+    console.warn('[Storage] Servidor no disponible, usando almacenamiento local:', netErr);
   }
 
-  // 2. Fallback a IndexedDB local
+  // 3. Fallback a IndexedDB local
   return await idbGet<StoredConsultas>(KEY_CONSULTAS);
 }
 
 export async function clearLocalConsultas(): Promise<void> {
+  // Eliminar en Firestore
+  try {
+    await clearCloudConsultas();
+  } catch (cloudErr) {
+    console.warn('[Storage] Error al limpiar consultas en Firestore:', cloudErr);
+  }
+
   // Eliminar en servidor
   try {
     await fetch('/api/reports/consultas', { method: 'DELETE' });

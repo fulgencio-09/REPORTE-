@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidUrgenciasReport(data) {
+      return data.keys().hasAll(['fileName', 'updatedAt', 'summaryJson'])
+        && data.keys().hasOnly(['fileName', 'updatedAt', 'summaryJson'])
+        && data.fileName is string
+        && data.updatedAt is string
+        && data.summaryJson is string;
+    }
+
+    function isValidConsultasMeta(data) {
+      return data.keys().hasAll(['fileName', 'totalRecords', 'totalChunks', 'updatedAt'])
+        && data.keys().hasOnly(['fileName', 'totalRecords', 'totalChunks', 'updatedAt'])
+        && data.fileName is string
+        && data.totalRecords is number
+        && data.totalChunks is number
+        && data.updatedAt is string;
+    }
+
+    function isValidConsultasChunk(data) {
+      return data.keys().hasAll(['chunkIndex', 'recordsJson', 'updatedAt'])
+        && data.keys().hasOnly(['chunkIndex', 'recordsJson', 'updatedAt'])
+        && data.chunkIndex is number
+        && data.recordsJson is string
+        && data.updatedAt is string;
+    }
+
+    match /urgencias_reports/{reportId} {
+      allow read: if true;
+      allow create, update: if isValidUrgenciasReport(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /consultas_meta/{metaId} {
+      allow read: if true;
+      allow create, update: if isValidConsultasMeta(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /consultas_chunks/{chunkId} {
+      allow read: if true;
+      allow create, update: if isValidConsultasChunk(request.resource.data);
+      allow delete: if true;
+    }
+
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}
